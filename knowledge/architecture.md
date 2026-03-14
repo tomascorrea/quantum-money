@@ -1,17 +1,19 @@
 # Architecture
 
-## Overview
+Like a quantum object that can be in many states before observation, quantum-money only performs its calculations when someone tries to observe the value.
 
-Like a quantum object that can be in many states before observation, quantum-money only performs its calculations when someone tries to observe the value. The library uses lazy evaluation to defer financial computations until results are explicitly requested.
+## Package Structure
 
-## Components
+```
+src/
+└── quantum_money/
+    └── __init__.py
+```
 
-<!-- Describe the main components/modules of the system and their responsibilities. -->
+## Core Design Decisions
 
-## Data Flow
+<!-- Document the key architectural choices: why the system works the way it does, trade-offs made, alternatives considered. Each decision should have a short heading and a paragraph explaining the rationale. -->
 
-<!-- Describe how data moves through the system. -->
+## Component Relationships
 
-## External Dependencies
-
-<!-- List external services, APIs, or systems this project interacts with. -->
+<!-- Show how the main components interact. An ASCII diagram, list, or brief prose description works well here. -->
