@@ -1,8 +1,55 @@
 # Core concepts
 
+## Money vs QMoney
+
+quantum-money provides two classes for different needs:
+
+| | Money | QMoney |
+|---|---|---|
+| **Evaluation** | Eager — computes immediately | Lazy — defers until `.observe()` |
+| **Input types** | `Decimal`, `str`, `int`, `float` | `Decimal` only |
+| **Rounding** | Automatic via `real_amount` | Explicit via `.round()` in the tree |
+| **Comparisons** | Full (`<`, `>`, `==`, etc.) | Only `==` (tree structure) |
+| **Use case** | General monetary arithmetic | Rounding-sensitive calculations |
+
+The bridge between them: `QMoney.observe()` returns a `Money` object.
+
+```python
+from decimal import Decimal
+from quantum_money import Money, QMoney
+
+# Money: immediate
+total = Money("29.99") * 3
+print(total.real_amount)  # Decimal('89.97')
+
+# QMoney: deferred, then becomes Money
+result = (QMoney(Decimal("29.99")) * 3).observe()
+print(result.real_amount)  # Decimal('89.97')
+assert isinstance(result, Money)
+```
+
+## Money: high-precision eager values
+
+Money maintains **full internal precision** (`raw_amount`) while providing a **rounded display** (`real_amount`) at 2 decimal places using ROUND_HALF_UP.
+
+```python
+from quantum_money import Money
+
+m = Money("10.335")
+m.raw_amount    # Decimal('10.335')  — full precision
+m.real_amount   # Decimal('10.34')   — rounded for display
+m.cents         # 1034
+```
+
+Comparisons use `real_amount`, so values that round to the same 2-decimal-place amount are considered equal:
+
+```python
+Money("10.335") == Money("10.336")  # True — both round to 10.34
+```
+
 ## Expression trees
 
-When you write `price + tax`, quantum-money does not compute the sum. Instead, it creates a tree node that records "add these two things." Each operation adds a new node to the tree.
+When you write `price + tax` with QMoney, no sum is computed. Instead, a tree node records "add these two things." Each operation adds a new node.
 
 ```python
 from decimal import Decimal
@@ -45,7 +92,7 @@ Each operation creates a specific node type:
 | `Root` | `a.root(n)` | `node`, `index` |
 | `Round` | `a.round(...)` | `node`, `rounding`, `places` |
 
-All nodes are **frozen dataclasses** — immutable and hashable. This means expression trees can be compared for equality and used as dictionary keys.
+All nodes are **NamedTuples** — immutable and hashable. Expression trees can be compared for equality and used as dictionary keys.
 
 ## Lazy evaluation
 
@@ -59,7 +106,7 @@ result = 29.99 * 3 + 2.40  # result is 92.37 right now
 
 # quantum-money: deferred
 result = price * 3 + tax    # result is an expression tree
-value = result.observe()     # NOW it computes 92.37
+value = result.observe()     # NOW it computes → returns Money
 ```
 
 ### Why defer computation?
@@ -72,53 +119,50 @@ value = result.observe()     # NOW it computes 92.37
 
 ## The observe pattern
 
-`.observe()` evaluates the tree recursively and returns a new `QMoney` containing just the result:
+`.observe()` evaluates the tree recursively and returns a `Money` object:
 
 ```python
 expr = price * 3 + tax
 # expr._node is Add(Mul(Value(29.99), 3), Value(2.40))
 
-observed = expr.observe()
-# observed._node is Value(92.37)
+result = expr.observe()
+# result is Money(92.37)
+
+result.raw_amount    # Decimal('92.37')
+result.real_amount   # Decimal('92.37')
+result.cents         # 9237
 ```
 
-After observation, the `QMoney` collapses from a complex tree to a single `Value` node — much like a quantum measurement collapsing a superposition into a definite state.
-
-### observe then to_decimal
-
-To get a Python `Decimal` out, call `.to_decimal()` on an observed value:
-
-```python
-result = expr.observe().to_decimal()
-# Decimal('92.37')
-```
-
-Calling `.to_decimal()` on an unobserved expression raises `NotObservedError`. This is a safety mechanism — it forces you to be explicit about when evaluation happens.
+After observation, the QMoney collapses from a complex tree into a concrete Money value — much like a quantum measurement collapsing a superposition into a definite state.
 
 ### Idempotent observation
 
-Calling `.observe()` on an already-observed `QMoney` is safe and returns the same value:
+Calling `.observe()` multiple times on the same expression is safe:
 
 ```python
 a = expr.observe()
-b = a.observe()
-a.to_decimal() == b.to_decimal()  # True
+b = expr.observe()
+assert a.raw_amount == b.raw_amount  # True
 ```
 
 ## Immutability
 
-Every operation returns a **new** `QMoney`. Nothing is ever modified in place:
+Every operation returns a **new** object. Nothing is ever modified in place:
 
 ```python
 price = QMoney(Decimal("10"))
 doubled = price * 2
 # price is unchanged — still QMoney(10)
 # doubled is a new QMoney(10 * 2)
+
+m = Money("10")
+total = m + Money("5")
+# m is unchanged — still Money(10)
 ```
 
-This makes quantum-money safe to use in concurrent code and eliminates an entire class of bugs related to shared mutable state.
+This makes quantum-money safe to use in concurrent code.
 
-## Equality and hashing
+## QMoney equality and hashing
 
 Two `QMoney` values are equal if their expression trees are structurally identical:
 
@@ -131,15 +175,15 @@ c = QMoney(Decimal("5")) + QMoney(Decimal("10"))
 a == c  # False — different tree structure (addition is not reordered)
 ```
 
-Note: equality compares **trees**, not **results**. Two different expressions that produce the same number are not equal as `QMoney` objects. To compare results, observe both and compare the `Decimal` values.
+Equality compares **trees**, not **results**. To compare results, observe both and compare the Money objects.
 
 ## Type safety
 
-quantum-money is deliberately strict about types:
+quantum-money is deliberately strict about types on QMoney:
 
 - **Requires `Decimal`** — prevents float precision bugs from entering the system
 - **Blocks `QMoney * QMoney`** — dollars times dollars has no financial meaning
-- **Blocks `float()` / `int()` / `bool()`** — forces explicit conversion through `.observe().to_decimal()`
+- **Blocks `float()` / `int()` / `bool()`** — forces evaluation through `.observe()`
 - **Blocks comparisons** (`<`, `>`, etc.) — meaningless on unevaluated trees
 
-These restrictions exist to catch bugs at the point where they're introduced, not downstream where they're harder to diagnose.
+Money is more permissive, accepting multiple input types and supporting full comparisons.

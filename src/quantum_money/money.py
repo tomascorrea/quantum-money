@@ -1,289 +1,182 @@
-"""QMoney class — lazy monetary value built on an expression tree."""
+"""Money class for high-precision eager financial calculations."""
 
 from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal
-from typing import TYPE_CHECKING, Self
+from typing import Union
 
-from quantum_money.errors import InvalidOperationError, NotObservedError
-from quantum_money.nodes import (
-    Add,
-    Div,
-    Mul,
-    Node,
-    Pow,
-    Root,
-    Round,
-    Sub,
-    Value,
-)
-
-if TYPE_CHECKING:
-    Scalar = int | Decimal
+_QUANTIZE_2DP = Decimal("0.01")
 
 
-class QMoney:
-    """A lazy monetary value that records operations as an expression tree.
+class Money:
+    """Represents a monetary amount with high internal precision.
 
-    All arithmetic is deferred until .observe() is called, giving full control
-    over when and how rounding is applied.
+    Maintains full precision internally for calculations but provides
+    'real money' representation rounded to 2 decimal places for display
+    and comparisons.
     """
 
-    __slots__ = ("_node",)
+    __slots__ = ("_amount",)
 
-    def __init__(
-        self, value: Decimal | None = None, *, _node: Node | None = None
-    ) -> None:
-        if _node is not None:
-            self._node = _node
-        elif value is not None:
-            if not isinstance(value, Decimal):
-                raise TypeError(
-                    f"QMoney requires a Decimal, got {type(value).__name__}. "
-                    "Use Decimal('10.33') not 10.33"
-                )
-            self._node = Value(value)
+    def __init__(self, amount: Union[Decimal, str, int, float]) -> None:
+        if isinstance(amount, float):
+            self._amount = Decimal(str(amount))
+        elif isinstance(amount, Decimal):
+            self._amount = amount
         else:
-            raise TypeError("QMoney requires a Decimal value")
+            self._amount = Decimal(amount)
+
+    # --- Factory methods ---
 
     @classmethod
-    def _from_node(cls, node: Node) -> Self:
-        obj = object.__new__(cls)
-        obj._node = node
-        return obj
+    def zero(cls) -> Money:
+        return cls(Decimal(0))
 
-    @staticmethod
-    def _to_decimal_scalar(other: object) -> Decimal:
-        if isinstance(other, Decimal):
-            return other
-        if isinstance(other, int):
-            return Decimal(other)
-        raise InvalidOperationError(
-            f"Operand must be int or Decimal, got {type(other).__name__}"
-        )
+    @classmethod
+    def from_cents(cls, cents: int) -> Money:
+        return cls(Decimal(cents) / 100)
 
-    # --- Arithmetic: QMoney +/- QMoney ---
+    # --- Arithmetic: Money +/- Money ---
 
-    def __add__(self, other: object) -> QMoney:
-        if not isinstance(other, QMoney):
+    def __add__(self, other: object) -> Money:
+        if not isinstance(other, Money):
             return NotImplemented
-        return QMoney._from_node(Add(self._node, other._node))
+        return Money(self._amount + other._amount)
 
-    def __radd__(self, other: object) -> QMoney:
+    def __radd__(self, other: object) -> Money:
         if other == 0:
             return self
-        if not isinstance(other, QMoney):
+        if not isinstance(other, Money):
             return NotImplemented
-        return QMoney._from_node(Add(other._node, self._node))
+        return Money(other._amount + self._amount)
 
-    def __sub__(self, other: object) -> QMoney:
-        if not isinstance(other, QMoney):
+    def __sub__(self, other: object) -> Money:
+        if not isinstance(other, Money):
             return NotImplemented
-        return QMoney._from_node(Sub(self._node, other._node))
+        return Money(self._amount - other._amount)
 
-    def __rsub__(self, other: object) -> QMoney:
-        if not isinstance(other, QMoney):
+    def __rsub__(self, other: object) -> Money:
+        if not isinstance(other, Money):
             return NotImplemented
-        return QMoney._from_node(Sub(other._node, self._node))
+        return Money(other._amount - self._amount)
 
-    # --- Arithmetic: QMoney */÷/^ scalar ---
+    # --- Arithmetic: Money */÷ scalar ---
 
-    def __mul__(self, other: object) -> QMoney:
-        if isinstance(other, QMoney):
-            raise InvalidOperationError(
-                "Cannot multiply QMoney by QMoney (no financial meaning). "
-                "Multiply by int or Decimal instead."
-            )
-        factor = self._to_decimal_scalar(other)
-        return QMoney._from_node(Mul(self._node, factor))
-
-    def __rmul__(self, other: object) -> QMoney:
-        if isinstance(other, QMoney):
-            raise InvalidOperationError(
-                "Cannot multiply QMoney by QMoney (no financial meaning)."
-            )
-        factor = self._to_decimal_scalar(other)
-        return QMoney._from_node(Mul(self._node, factor))
-
-    def __truediv__(self, other: object) -> QMoney:
-        if isinstance(other, QMoney):
-            raise InvalidOperationError(
-                "Cannot divide QMoney by QMoney. Divide by int or Decimal instead."
-            )
-        divisor = self._to_decimal_scalar(other)
-        return QMoney._from_node(Div(self._node, divisor))
-
-    def __rtruediv__(self, other: object) -> QMoney:
+    def __mul__(self, factor: object) -> Money:
+        if isinstance(factor, Money):
+            return NotImplemented
+        if isinstance(factor, Decimal):
+            return Money(self._amount * factor)
+        if isinstance(factor, (int, float)):
+            return Money(self._amount * Decimal(str(factor)))
         return NotImplemented
 
-    def __pow__(self, other: object) -> QMoney:
-        if isinstance(other, QMoney):
-            raise InvalidOperationError("Cannot raise QMoney to a QMoney power.")
-        exponent = self._to_decimal_scalar(other)
-        return QMoney._from_node(Pow(self._node, exponent))
+    def __rmul__(self, factor: object) -> Money:
+        if isinstance(factor, Money):
+            return NotImplemented
+        if isinstance(factor, Decimal):
+            return Money(self._amount * factor)
+        if isinstance(factor, (int, float)):
+            return Money(self._amount * Decimal(str(factor)))
+        return NotImplemented
+
+    def __truediv__(self, divisor: object) -> Money:
+        if isinstance(divisor, Money):
+            return NotImplemented
+        if isinstance(divisor, Decimal):
+            return Money(self._amount / divisor)
+        if isinstance(divisor, (int, float)):
+            return Money(self._amount / Decimal(str(divisor)))
+        return NotImplemented
 
     # --- Unary operators ---
 
-    def __neg__(self) -> QMoney:
-        return QMoney._from_node(Mul(self._node, Decimal("-1")))
+    def __neg__(self) -> Money:
+        return Money(-self._amount)
 
-    def __pos__(self) -> QMoney:
+    def __abs__(self) -> Money:
+        return Money(abs(self._amount))
+
+    def __pos__(self) -> Money:
         return self
 
-    # --- Blocked conversions ---
+    # --- Comparisons (at real_amount precision) ---
 
-    def __float__(self) -> float:
-        raise TypeError(
-            "Cannot convert QMoney to float. Use .observe().to_decimal() instead."
-        )
-
-    def __int__(self) -> int:
-        raise TypeError(
-            "Cannot convert QMoney to int. Use .observe().to_decimal() instead."
-        )
-
-    def __bool__(self) -> bool:
-        raise TypeError(
-            "Cannot evaluate QMoney as bool. Observe first, then compare the Decimal."
-        )
-
-    # --- Comparisons ---
+    def _compare_value(self, other: object) -> Decimal | type(NotImplemented):
+        if isinstance(other, Money):
+            return other.real_amount
+        return NotImplemented
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, QMoney):
+        value = self._compare_value(other)
+        if value is NotImplemented:
             return NotImplemented
-        return self._node == other._node
+        return self.real_amount == value
 
     def __lt__(self, other: object) -> bool:
-        raise TypeError(
-            "Cannot compare QMoney. "
-            "Use .observe().to_decimal() to get comparable values."
-        )
+        value = self._compare_value(other)
+        if value is NotImplemented:
+            return NotImplemented
+        return self.real_amount < value
 
     def __le__(self, other: object) -> bool:
-        raise TypeError(
-            "Cannot compare QMoney. "
-            "Use .observe().to_decimal() to get comparable values."
-        )
+        value = self._compare_value(other)
+        if value is NotImplemented:
+            return NotImplemented
+        return self.real_amount <= value
 
     def __gt__(self, other: object) -> bool:
-        raise TypeError(
-            "Cannot compare QMoney. "
-            "Use .observe().to_decimal() to get comparable values."
-        )
+        value = self._compare_value(other)
+        if value is NotImplemented:
+            return NotImplemented
+        return self.real_amount > value
 
     def __ge__(self, other: object) -> bool:
-        raise TypeError(
-            "Cannot compare QMoney. "
-            "Use .observe().to_decimal() to get comparable values."
-        )
+        value = self._compare_value(other)
+        if value is NotImplemented:
+            return NotImplemented
+        return self.real_amount >= value
 
     def __hash__(self) -> int:
-        return hash(self._node)
+        return hash(self.real_amount)
 
-    # --- Core methods ---
+    # --- Properties ---
 
-    def round(self, rounding: str = ROUND_HALF_UP, places: int = 2) -> QMoney:
-        """Record a rounding step in the expression tree (lazy)."""
-        return QMoney._from_node(Round(self._node, rounding, places))
+    @property
+    def raw_amount(self) -> Decimal:
+        """High-precision internal amount."""
+        return self._amount
 
-    def root(self, n: int | Decimal) -> QMoney:
-        """Record an nth-root operation in the expression tree (lazy)."""
-        index = self._to_decimal_scalar(n)
-        return QMoney._from_node(Root(self._node, index))
+    @property
+    def real_amount(self) -> Decimal:
+        """Amount rounded to 2 decimal places (ROUND_HALF_UP)."""
+        return self._amount.quantize(_QUANTIZE_2DP, rounding=ROUND_HALF_UP)
 
-    def observe(self) -> QMoney:
-        """Evaluate the expression tree and return a new QMoney with the result."""
-        result = _evaluate(self._node)
-        return QMoney._from_node(Value(result))
+    @property
+    def cents(self) -> int:
+        """Real amount expressed in cents."""
+        return int(self.real_amount * 100)
 
-    def to_decimal(self) -> Decimal:
-        """Extract the Decimal value. Only works on observed (single-value) QMoney."""
-        if not isinstance(self._node, Value):
-            raise NotObservedError(
-                "Cannot extract Decimal from an unevaluated expression tree. "
-                "Call .observe() first."
-            )
-        return self._node.amount
+    # --- Conversions ---
 
-    # --- Repr ---
+    def to_real_money(self) -> Money:
+        """Return a new Money rounded to 2 decimal places."""
+        return Money(self.real_amount)
+
+    def is_positive(self) -> bool:
+        return self._amount > 0
+
+    def is_negative(self) -> bool:
+        return self._amount < 0
+
+    def is_zero(self) -> bool:
+        return self._amount == 0
+
+    def __float__(self) -> float:
+        return float(self._amount)
+
+    def __str__(self) -> str:
+        return f"{self.real_amount:,.2f}"
 
     def __repr__(self) -> str:
-        return f"QMoney({_repr_node(self._node)})"
-
-
-def _eval_value(node: Value) -> Decimal:
-    return node.amount
-
-
-def _eval_add(node: Add) -> Decimal:
-    return _evaluate(node.left) + _evaluate(node.right)
-
-
-def _eval_sub(node: Sub) -> Decimal:
-    return _evaluate(node.left) - _evaluate(node.right)
-
-
-def _eval_mul(node: Mul) -> Decimal:
-    return _evaluate(node.node) * node.factor
-
-
-def _eval_div(node: Div) -> Decimal:
-    return _evaluate(node.node) / node.divisor
-
-
-def _eval_pow(node: Pow) -> Decimal:
-    return _evaluate(node.node) ** node.exponent
-
-
-def _eval_root(node: Root) -> Decimal:
-    return _evaluate(node.node) ** (Decimal(1) / node.index)
-
-
-def _eval_round(node: Round) -> Decimal:
-    value = _evaluate(node.node)
-    quantize_to = Decimal(10) ** -node.places
-    return value.quantize(quantize_to, rounding=node.rounding)
-
-
-_EVALUATORS = {
-    Value: _eval_value,
-    Add: _eval_add,
-    Sub: _eval_sub,
-    Mul: _eval_mul,
-    Div: _eval_div,
-    Pow: _eval_pow,
-    Root: _eval_root,
-    Round: _eval_round,
-}
-
-
-def _evaluate(node: Node) -> Decimal:
-    """Recursively evaluate an expression tree to a Decimal."""
-    evaluator = _EVALUATORS.get(type(node))
-    if evaluator is not None:
-        return evaluator(node)
-    raise TypeError(f"Unknown node type: {type(node).__name__}")
-
-
-def _repr_node(node: Node) -> str:
-    """Human-readable representation of an expression tree."""
-    match node:
-        case Value(amount):
-            return str(amount)
-        case Add(left, right):
-            return f"({_repr_node(left)} + {_repr_node(right)})"
-        case Sub(left, right):
-            return f"({_repr_node(left)} - {_repr_node(right)})"
-        case Mul(inner, factor):
-            return f"({_repr_node(inner)} * {factor})"
-        case Div(inner, divisor):
-            return f"({_repr_node(inner)} / {divisor})"
-        case Pow(inner, exponent):
-            return f"({_repr_node(inner)} ** {exponent})"
-        case Root(inner, index):
-            return f"root({_repr_node(inner)}, {index})"
-        case Round(inner, rounding, places):
-            return f"round({_repr_node(inner)}, {rounding}, {places})"
-        case _:
-            return f"<unknown: {node}>"
+        return f"Money({self._amount})"

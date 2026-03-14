@@ -2,7 +2,7 @@
 
 import pytest
 
-from quantum_money import InvalidOperationError, NotObservedError, QMoney
+from quantum_money import InvalidOperationError, QMoney
 
 
 def test_qmoney_constructor_rejects_float():
@@ -53,12 +53,6 @@ def test_qmoney_sub_non_qmoney_raises(price):
 def test_qmoney_mul_by_float_raises(price):
     with pytest.raises(InvalidOperationError, match="got float"):
         price * 3.5
-
-
-def test_to_decimal_unevaluated_raises(price):
-    expr = price * 3
-    with pytest.raises(NotObservedError, match="Call .observe\\(\\) first"):
-        expr.to_decimal()
 
 
 def test_float_conversion_raises(price):

@@ -1,11 +1,15 @@
 """Smoke tests for quantum-money package imports."""
 
 import quantum_money
-from quantum_money import InvalidOperationError, NotObservedError, QMoney
+from quantum_money import InvalidOperationError, Money, NotObservedError, QMoney
 
 
 def test_import():
     assert quantum_money is not None
+
+
+def test_money_importable_from_package():
+    assert Money is not None
 
 
 def test_qmoney_importable_from_package():

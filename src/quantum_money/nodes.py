@@ -2,56 +2,47 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from decimal import Decimal
 
 
-@dataclass(frozen=True, slots=True)
-class Value:
+class Value(NamedTuple):
     amount: Decimal
 
 
-@dataclass(frozen=True, slots=True)
-class Add:
+class Add(NamedTuple):
     left: Node
     right: Node
 
 
-@dataclass(frozen=True, slots=True)
-class Sub:
+class Sub(NamedTuple):
     left: Node
     right: Node
 
 
-@dataclass(frozen=True, slots=True)
-class Mul:
+class Mul(NamedTuple):
     node: Node
     factor: Decimal
 
 
-@dataclass(frozen=True, slots=True)
-class Div:
+class Div(NamedTuple):
     node: Node
     divisor: Decimal
 
 
-@dataclass(frozen=True, slots=True)
-class Pow:
+class Pow(NamedTuple):
     node: Node
     exponent: Decimal
 
 
-@dataclass(frozen=True, slots=True)
-class Root:
+class Root(NamedTuple):
     node: Node
     index: Decimal
 
 
-@dataclass(frozen=True, slots=True)
-class Round:
+class Round(NamedTuple):
     node: Node
     rounding: str
     places: int

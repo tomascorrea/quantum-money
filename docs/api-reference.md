@@ -1,14 +1,143 @@
 # API reference
 
-## QMoney
+## Money
 
-::: quantum_money.QMoney
+```python
+from quantum_money import Money
+```
+
+Eager monetary value with high internal precision. Computes immediately on every operation.
+
+### Constructor
+
+```python
+Money(amount: Decimal | str | int | float)
+```
+
+Creates a Money from any numeric type. Floats are converted via `str()` to avoid precision issues.
+
+```python
+Money(Decimal("10.33"))   # From Decimal
+Money("10.33")            # From string
+Money(10)                 # From int
+Money(10.33)              # From float (safe — goes through str)
+```
+
+---
+
+### Factory methods
+
+#### `Money.zero() -> Money`
+
+Creates a Money with amount 0.
+
+#### `Money.from_cents(cents: int) -> Money`
+
+Creates a Money from an integer cent amount.
+
+```python
+Money.from_cents(1050)  # Money(10.50)
+```
+
+---
+
+### Properties
+
+#### `raw_amount -> Decimal`
+
+The high-precision internal amount, exactly as stored.
+
+#### `real_amount -> Decimal`
+
+The amount rounded to 2 decimal places using `ROUND_HALF_UP`. Used for display and comparisons.
+
+#### `cents -> int`
+
+The `real_amount` expressed in cents.
+
+```python
+m = Money("10.335")
+m.raw_amount    # Decimal('10.335')
+m.real_amount   # Decimal('10.34')
+m.cents         # 1034
+```
+
+---
+
+### Arithmetic operators
+
+| Operator | Expression | Description |
+|---|---|---|
+| `+` | `a + b` | Addition (Money + Money) |
+| `-` | `a - b` | Subtraction (Money - Money) |
+| `*` | `a * n` or `n * a` | Multiplication by scalar |
+| `/` | `a / n` | Division by scalar |
+| `-` | `-a` | Negation |
+| `abs()` | `abs(a)` | Absolute value |
+| `+` | `+a` | Identity (returns self) |
+
+```python
+sum([a, b, c])  # Works — uses __radd__ with 0
+```
+
+Scalars can be `int`, `float`, or `Decimal`.
+
+---
+
+### Comparisons
+
+All comparisons use `real_amount` (2 decimal places):
+
+| Operator | Description |
+|---|---|
+| `==` | Equal (at real_amount precision) |
+| `<` | Less than |
+| `<=` | Less than or equal |
+| `>` | Greater than |
+| `>=` | Greater than or equal |
+
+```python
+Money("10.334") == Money("10.33")   # True — same real_amount
+Money("1.00") < Money("2.00")       # True
+```
+
+---
+
+### Methods
+
+#### `to_real_money() -> Money`
+
+Returns a new Money rounded to 2 decimal places.
+
+```python
+Money("10.335").to_real_money()  # Money(10.34)
+```
+
+#### `is_positive() -> bool`
+
+#### `is_negative() -> bool`
+
+#### `is_zero() -> bool`
+
+---
+
+### Conversions
+
+```python
+float(money)   # Float representation
+str(money)     # Display string (e.g., "10.33")
+repr(money)    # "Money(10.33)"
+```
+
+---
+
+## QMoney
 
 ```python
 from quantum_money import QMoney
 ```
 
-The main class. Represents a lazy monetary value backed by an expression tree.
+Lazy monetary value backed by an expression tree. All operations are deferred until `.observe()` is called.
 
 ### Constructor
 
@@ -17,10 +146,6 @@ QMoney(value: Decimal)
 ```
 
 Creates a `QMoney` from a `Decimal` value.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `value` | `Decimal` | The monetary amount. Must be a `Decimal`. |
 
 **Raises:** `TypeError` if `value` is not a `Decimal`.
 
@@ -38,30 +163,18 @@ QMoney(10)     # TypeError: QMoney requires a Decimal
 
 ### Methods
 
-#### `observe() -> QMoney`
+#### `observe() -> Money`
 
-Evaluates the expression tree and returns a new `QMoney` containing the computed result as a single `Value` node.
+Evaluates the expression tree and returns a `Money` object containing the computed result.
 
 ```python
 expr = QMoney(Decimal("10")) * 3
 result = expr.observe()
-# result contains Value(Decimal('30'))
+# result is Money(30)
+result.raw_amount  # Decimal('30')
 ```
 
-Idempotent — calling `.observe()` on an already-observed value is safe.
-
----
-
-#### `to_decimal() -> Decimal`
-
-Extracts the `Decimal` value. Only works on observed (single-value) `QMoney` instances.
-
-**Raises:** `NotObservedError` if called on an unevaluated expression tree.
-
-```python
-value = expr.observe().to_decimal()
-# Decimal('30')
-```
+Calling `.observe()` on the same expression multiple times is safe and produces the same result.
 
 ---
 
@@ -91,14 +204,10 @@ price.round(ROUND_HALF_UP, places=0)     # Round to whole number
 
 Adds an nth-root node to the expression tree.
 
-| Parameter | Type | Description |
-|---|---|---|
-| `n` | `int \| Decimal` | The root index. |
-
 ```python
 val = QMoney(Decimal("16"))
-val.root(2).observe().to_decimal()  # Square root → 4
-val.root(4).observe().to_decimal()  # Fourth root → 2
+val.root(2).observe().raw_amount  # Decimal('4') — square root
+val.root(4).observe().raw_amount  # Decimal('2') — fourth root
 ```
 
 ---
@@ -146,10 +255,10 @@ These raise `TypeError` or `InvalidOperationError`:
 | `QMoney * QMoney` | `InvalidOperationError` | No financial meaning |
 | `QMoney / QMoney` | `InvalidOperationError` | No financial meaning |
 | `QMoney ** QMoney` | `InvalidOperationError` | No financial meaning |
-| `float(qmoney)` | `TypeError` | Use `.observe().to_decimal()` |
-| `int(qmoney)` | `TypeError` | Use `.observe().to_decimal()` |
+| `float(qmoney)` | `TypeError` | Use `.observe()` instead |
+| `int(qmoney)` | `TypeError` | Use `.observe()` instead |
 | `bool(qmoney)` | `TypeError` | Observe and compare explicitly |
-| `a < b`, `a <= b`, `a > b`, `a >= b` | `TypeError` | Observe first, then compare decimals |
+| `a < b`, `a <= b`, `a > b`, `a >= b` | `TypeError` | Observe first, then compare Money values |
 
 ---
 
@@ -195,12 +304,7 @@ Base exception for all quantum-money errors. Catch this to handle any library er
 class NotObservedError(QuantumMoneyError)
 ```
 
-Raised when `.to_decimal()` is called on a `QMoney` with an unevaluated expression tree. Fix by calling `.observe()` first.
-
-```python
-expr = QMoney(Decimal("10")) + QMoney(Decimal("5"))
-expr.to_decimal()  # Raises NotObservedError
-```
+Raised for observation-related errors.
 
 ---
 
@@ -226,7 +330,7 @@ a * b  # Raises InvalidOperationError
 from quantum_money.nodes import Value, Add, Sub, Mul, Div, Pow, Root, Round, Node
 ```
 
-Expression tree node types. All are frozen dataclasses (immutable and hashable). These are internal to the library but available for advanced use cases like custom tree walkers or serializers.
+Expression tree node types. All are NamedTuples (immutable and hashable). These are internal to the library but available for advanced use cases like custom tree walkers or serializers.
 
 | Node | Fields | Description |
 |---|---|---|

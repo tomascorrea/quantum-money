@@ -1,8 +1,13 @@
 # quantum-money
 
-**Lazy evaluation library for monetary calculations in Python.**
+**Eager and lazy evaluation library for monetary calculations in Python.**
 
-Like a quantum object that can be in many states before observation, quantum-money builds an expression tree of your calculations and only evaluates them when you call `.observe()`.
+quantum-money provides two complementary classes:
+
+- **Money** — eager evaluation with high internal precision, rounded display, and full comparison support.
+- **QMoney** — lazy evaluation via expression trees, giving full control over when and how rounding is applied.
+
+`QMoney.observe()` returns a `Money` object, creating a natural bridge from lazy to eager.
 
 ## The problem
 
@@ -15,7 +20,17 @@ A 5-cent difference from the same inputs. At scale, these discrepancies compound
 
 ## The solution
 
-quantum-money defers all computation until you explicitly call `.observe()`. You build an expression tree using normal Python operators, place `.round()` exactly where you want it, and evaluate everything at once.
+**Money** handles straightforward calculations where you don't need rounding control:
+
+```python
+from quantum_money import Money
+
+price = Money("29.99")
+total = price * 3 + Money("5.00")
+print(total.real_amount)  # Decimal('94.97')
+```
+
+**QMoney** defers all computation until you explicitly call `.observe()`. You build an expression tree, place `.round()` exactly where you want it, and evaluate everything at once:
 
 ```python
 from decimal import Decimal, ROUND_HALF_UP
@@ -27,20 +42,21 @@ shipping = QMoney(Decimal("5.00"))
 discount = QMoney(Decimal("2.50"))
 
 total = (price * qty + shipping - discount).round(ROUND_HALF_UP)
-result = total.observe().to_decimal()
-# Decimal('92.47')
+result = total.observe()
+print(result.raw_amount)  # Decimal('92.47')
 ```
 
 Nothing is calculated until `.observe()`. You have full control.
 
 ## Features
 
-- **Lazy evaluation** — operations build an expression tree, computed only on `.observe()`
-- **Rounding control** — place `.round()` anywhere in the expression with any strategy
-- **Type safety** — requires `Decimal` inputs, blocks `float` and `int` conversion
-- **Immutable** — all operations return new `QMoney` instances
-- **Inspectable** — `repr()` shows the full expression tree
-- **Hashable** — can be used in sets and as dict keys
+- **Two classes** — Money (eager) and QMoney (lazy) for different use cases
+- **Natural bridge** — `QMoney.observe()` returns a `Money` object
+- **High precision** — Money keeps full internal precision, rounds only for display
+- **Rounding control** — QMoney lets you place `.round()` anywhere in the expression
+- **Type safety** — QMoney requires `Decimal` inputs; Money accepts `Decimal`, `str`, `int`, `float`
+- **Immutable** — all operations return new instances
+- **Inspectable** — `repr()` shows QMoney's full expression tree
 
 ## Next steps
 
@@ -58,7 +74,7 @@ Nothing is calculated until `.observe()`. You have full control.
 
     ---
 
-    Understand expression trees, lazy evaluation, and the observe pattern.
+    Understand Money vs QMoney, expression trees, and the observe pattern.
 
     [:octicons-arrow-right-24: Concepts](concepts.md)
 
@@ -66,7 +82,7 @@ Nothing is calculated until `.observe()`. You have full control.
 
     ---
 
-    Complete reference for `QMoney`, exceptions, and node types.
+    Complete reference for `Money`, `QMoney`, exceptions, and node types.
 
     [:octicons-arrow-right-24: API reference](api-reference.md)
 
