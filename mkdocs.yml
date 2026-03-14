@@ -1,5 +1,41 @@
 site_name: quantum-money
+site_description: Lazy evaluation library for monetary calculations in Python
+repo_url: https://github.com/your-username/quantum-money
+
 theme:
   name: material
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - content.code.copy
+    - navigation.sections
+    - navigation.expand
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - admonitions
+  - attr_list
+  - md_in_html
+
 nav:
   - Home: index.md
+  - Getting started: getting-started.md
+  - Core concepts: concepts.md
+  - API reference: api-reference.md
+  - Examples: examples.md
