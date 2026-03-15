@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numbers
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Union
 
 _QUANTIZE_2DP = Decimal("0.01")
 
@@ -19,7 +18,7 @@ class Money:
 
     __slots__ = ("_amount",)
 
-    def __init__(self, amount: Union[Decimal, str, int, float]) -> None:
+    def __init__(self, amount: Decimal | str | int | float) -> None:
         if isinstance(amount, float):
             self._amount = Decimal(str(amount))
         elif isinstance(amount, Decimal):

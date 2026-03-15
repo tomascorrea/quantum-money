@@ -1,6 +1,5 @@
 """Tests for expression tree node types."""
 
-import dataclasses
 from decimal import Decimal
 
 import pytest

@@ -38,7 +38,13 @@ class MoneyField(fields.Field):
             )
         self.representation = representation
 
-    def _serialize(self, value: object, attr: str | None, obj: object, **kwargs: object) -> str | int | float | None:
+    def _serialize(
+        self,
+        value: object,
+        attr: str | None,
+        obj: object,
+        **kwargs: object,
+    ) -> str | int | float | None:
         if value is None:
             return None
         if not isinstance(value, Money):
@@ -52,7 +58,13 @@ class MoneyField(fields.Field):
             return float(value.real_amount)
         return value.cents
 
-    def _deserialize(self, value: object, attr: str | None, data: object, **kwargs: object) -> Money | None:
+    def _deserialize(
+        self,
+        value: object,
+        attr: str | None,
+        data: object,
+        **kwargs: object,
+    ) -> Money | None:
         if value is None:
             return None
         try:

@@ -1,6 +1,6 @@
 """SQLAlchemy TypeDecorator for Money."""
 
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import Integer, Numeric
 from sqlalchemy.types import TypeDecorator
@@ -61,7 +61,7 @@ class MoneyType(TypeDecorator):
             return value.cents
         return value
 
-    def process_result_value(self, value: Any, dialect: Any) -> Optional[Money]:
+    def process_result_value(self, value: Any, dialect: Any) -> Money | None:
         if value is None:
             return None
         if self.representation == "cents":

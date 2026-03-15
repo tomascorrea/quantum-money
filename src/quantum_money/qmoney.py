@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 
 from quantum_money.errors import InvalidOperationError
 from quantum_money.money import Money
@@ -146,14 +146,10 @@ class QMoney:
     # --- Blocked conversions ---
 
     def __float__(self) -> float:
-        raise TypeError(
-            "Cannot convert QMoney to float. Use .observe() instead."
-        )
+        raise TypeError("Cannot convert QMoney to float. Use .observe() instead.")
 
     def __int__(self) -> int:
-        raise TypeError(
-            "Cannot convert QMoney to int. Use .observe() instead."
-        )
+        raise TypeError("Cannot convert QMoney to int. Use .observe() instead.")
 
     def __bool__(self) -> bool:
         raise TypeError(
@@ -169,26 +165,22 @@ class QMoney:
 
     def __lt__(self, other: object) -> bool:
         raise TypeError(
-            "Cannot compare QMoney. "
-            "Use .observe() to get comparable Money values."
+            "Cannot compare QMoney. " "Use .observe() to get comparable Money values."
         )
 
     def __le__(self, other: object) -> bool:
         raise TypeError(
-            "Cannot compare QMoney. "
-            "Use .observe() to get comparable Money values."
+            "Cannot compare QMoney. " "Use .observe() to get comparable Money values."
         )
 
     def __gt__(self, other: object) -> bool:
         raise TypeError(
-            "Cannot compare QMoney. "
-            "Use .observe() to get comparable Money values."
+            "Cannot compare QMoney. " "Use .observe() to get comparable Money values."
         )
 
     def __ge__(self, other: object) -> bool:
         raise TypeError(
-            "Cannot compare QMoney. "
-            "Use .observe() to get comparable Money values."
+            "Cannot compare QMoney. " "Use .observe() to get comparable Money values."
         )
 
     def __hash__(self) -> int:
@@ -233,11 +225,15 @@ def _eval_value(node: Value) -> Decimal:
 
 
 def _eval_add(node: Add) -> Decimal:
-    return _EVALUATORS[type(node.left)](node.left) + _EVALUATORS[type(node.right)](node.right)
+    return _EVALUATORS[type(node.left)](node.left) + _EVALUATORS[type(node.right)](
+        node.right
+    )
 
 
 def _eval_sub(node: Sub) -> Decimal:
-    return _EVALUATORS[type(node.left)](node.left) - _EVALUATORS[type(node.right)](node.right)
+    return _EVALUATORS[type(node.left)](node.left) - _EVALUATORS[type(node.right)](
+        node.right
+    )
 
 
 def _eval_mul(node: Mul) -> Decimal:
@@ -258,7 +254,7 @@ def _eval_root(node: Root) -> Decimal:
 
 def _eval_round(node: Round) -> Decimal:
     value = _EVALUATORS[type(node.node)](node.node)
-    quantize_to = _DECIMAL_10 ** -node.places
+    quantize_to = _DECIMAL_10**-node.places
     return value.quantize(quantize_to, rounding=node.rounding)
 
 

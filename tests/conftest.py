@@ -6,7 +6,6 @@ import pytest
 
 from quantum_money import Money, QMoney
 
-
 # --- QMoney fixtures ---
 
 

@@ -8,7 +8,6 @@ from marshmallow import Schema, ValidationError
 from quantum_money.ext.marshmallow import MoneyField
 from quantum_money.money import Money
 
-
 # ---------------------------------------------------------------------------
 # Helper schemas
 # ---------------------------------------------------------------------------

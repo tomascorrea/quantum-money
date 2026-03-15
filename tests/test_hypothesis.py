@@ -98,9 +98,7 @@ def test_div_matches_decimal(a: Decimal, b: Decimal) -> None:
 
 
 @given(a=money_decimals, b=money_decimals, n=scalar_ints)
-def test_chained_mul_add_matches_decimal(
-    a: Decimal, b: Decimal, n: int
-) -> None:
+def test_chained_mul_add_matches_decimal(a: Decimal, b: Decimal, n: int) -> None:
     result = (QMoney(a) * n + QMoney(b)).observe().raw_amount
     assert result == a * n + b
 

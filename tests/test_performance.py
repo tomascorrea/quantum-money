@@ -94,9 +94,7 @@ class TestPerformance:
         ],
         ids=["add", "chain", "sum", "mul_chain"],
     )
-    def test_overhead_within_bounds(
-        self, label: str, decimal_fn, qmoney_fn
-    ) -> None:
+    def test_overhead_within_bounds(self, label: str, decimal_fn, qmoney_fn) -> None:
         # warm-up
         for _ in range(100):
             decimal_fn()
