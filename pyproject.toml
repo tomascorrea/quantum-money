@@ -28,5 +28,9 @@ target-version = ["py312"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 
+[project.optional-dependencies]
+sa = ["sqlalchemy>=2.0"]
+marshmallow = ["marshmallow>=3.0"]
+
 [dependency-groups]
-dev = ["ruff", "black", "pytest", "hypothesis", "mkdocs-material"]
+dev = ["ruff", "black", "pytest", "hypothesis", "mkdocs-material", "sqlalchemy>=2.0", "marshmallow>=3.0"]

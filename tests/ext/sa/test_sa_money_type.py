@@ -1,0 +1,184 @@
+"""Tests for MoneyType TypeDecorator."""
+
+from decimal import Decimal
+
+import pytest
+from sqlalchemy import Integer
+
+from quantum_money.ext.sa import MoneyType
+from quantum_money.money import Money
+
+from .conftest import (
+    MoneyCentsModel,
+    MoneyCustomPrecisionModel,
+    MoneyRawModel,
+    MoneyRealModel,
+)
+
+
+# ===========================================================================
+# Construction
+# ===========================================================================
+
+
+def test_money_type_invalid_representation_raises():
+    """Invalid representation raises ValueError."""
+    with pytest.raises(ValueError, match="Invalid representation"):
+        MoneyType(representation="unknown")
+
+
+@pytest.mark.parametrize("representation", ["raw", "real", "cents"])
+def test_money_type_valid_representation_accepted(representation):
+    """All valid representations are accepted."""
+    col_type = MoneyType(representation=representation)
+    assert col_type.representation == representation
+
+
+def test_money_type_default_precision_and_scale():
+    """Default precision=20, scale=10."""
+    col_type = MoneyType()
+    assert col_type.precision == 20
+    assert col_type.scale == 10
+
+
+def test_money_type_custom_precision_and_scale():
+    """Custom precision and scale via kwargs."""
+    col_type = MoneyType(precision=12, scale=4)
+    assert col_type.precision == 12
+    assert col_type.scale == 4
+
+
+def test_money_type_positional_precision_and_scale():
+    """Precision and scale as positional args."""
+    col_type = MoneyType(12, 4)
+    assert col_type.precision == 12
+    assert col_type.scale == 4
+    assert col_type.representation == "raw"
+
+
+def test_money_type_positional_representation_third():
+    """Representation as third positional arg."""
+    col_type = MoneyType(12, 4, "real")
+    assert col_type.precision == 12
+    assert col_type.scale == 4
+    assert col_type.representation == "real"
+
+
+def test_money_type_cents_uses_integer_column(session):
+    """Cents representation maps to Integer dialect type."""
+    col_type = MoneyType(representation="cents", precision=8, scale=3)
+    assert col_type.precision == 8
+    assert col_type.scale == 3
+    dialect_impl = col_type.load_dialect_impl(session.bind.dialect)
+    assert isinstance(dialect_impl, Integer)
+
+
+# ===========================================================================
+# Round-trip with custom precision/scale
+# ===========================================================================
+
+
+def test_money_type_roundtrip_custom_precision(session):
+    """Custom precision model round-trips correctly."""
+    original = Money("12345.67")
+    session.add(MoneyCustomPrecisionModel(id=1, amount=original))
+    session.flush()
+    session.expire_all()
+    loaded = session.get(MoneyCustomPrecisionModel, 1)
+    assert loaded.amount.real_amount == Decimal("12345.67")
+
+
+# ===========================================================================
+# Round-trip raw
+# ===========================================================================
+
+
+@pytest.mark.parametrize(
+    "amount_str,expected_raw",
+    [
+        ("100.50", Decimal("100.50")),
+        ("0", Decimal("0")),
+        ("12345.6789", Decimal("12345.6789")),
+        ("-50.25", Decimal("-50.25")),
+    ],
+    ids=["positive", "zero", "high-precision", "negative"],
+)
+def test_money_type_roundtrip_raw(session, amount_str, expected_raw):
+    """Raw representation preserves raw_amount through the database."""
+    original = Money(amount_str)
+    session.add(MoneyRawModel(id=1, amount=original))
+    session.flush()
+    session.expire_all()
+    loaded = session.get(MoneyRawModel, 1)
+    assert loaded.amount.raw_amount == expected_raw
+
+
+# ===========================================================================
+# Round-trip real
+# ===========================================================================
+
+
+@pytest.mark.parametrize(
+    "amount_str,expected_real",
+    [
+        ("100.50", Decimal("100.50")),
+        ("100.125", Decimal("100.13")),
+        ("0.001", Decimal("0.00")),
+    ],
+    ids=["exact", "rounded-up", "sub-cent"],
+)
+def test_money_type_roundtrip_real(session, amount_str, expected_real):
+    """Real representation stores and loads the rounded 2dp value."""
+    original = Money(amount_str)
+    session.add(MoneyRealModel(id=1, amount=original))
+    session.flush()
+    session.expire_all()
+    loaded = session.get(MoneyRealModel, 1)
+    assert loaded.amount.real_amount == expected_real
+
+
+# ===========================================================================
+# Round-trip cents
+# ===========================================================================
+
+
+@pytest.mark.parametrize(
+    "amount_str,expected_real",
+    [
+        ("100.50", Decimal("100.50")),
+        ("0.01", Decimal("0.01")),
+        ("0", Decimal("0.00")),
+    ],
+    ids=["dollars-and-cents", "one-cent", "zero"],
+)
+def test_money_type_roundtrip_cents(session, amount_str, expected_real):
+    """Cents representation stores as integer and loads back correctly."""
+    original = Money(amount_str)
+    session.add(MoneyCentsModel(id=1, amount=original))
+    session.flush()
+    session.expire_all()
+    loaded = session.get(MoneyCentsModel, 1)
+    assert loaded.amount.real_amount == expected_real
+
+
+# ===========================================================================
+# None handling
+# ===========================================================================
+
+
+def test_money_type_none_raw(session):
+    """None passes through raw representation unchanged."""
+    session.add(MoneyRawModel(id=1, amount=None))
+    session.flush()
+    session.expire_all()
+    loaded = session.get(MoneyRawModel, 1)
+    assert loaded.amount is None
+
+
+def test_money_type_none_cents(session):
+    """None passes through cents representation unchanged."""
+    session.add(MoneyCentsModel(id=1, amount=None))
+    session.flush()
+    session.expire_all()
+    loaded = session.get(MoneyCentsModel, 1)
+    assert loaded.amount is None
