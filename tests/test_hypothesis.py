@@ -34,36 +34,36 @@ scalar_ints = st.integers(min_value=-1_000, max_value=1_000).filter(lambda x: x 
 @given(a=money_decimals, b=money_decimals)
 def test_addition_is_commutative(a: Decimal, b: Decimal) -> None:
     qa, qb = QMoney(a), QMoney(b)
-    left = (qa + qb).observe().to_decimal()
-    right = (qb + qa).observe().to_decimal()
+    left = (qa + qb).observe().raw_amount
+    right = (qb + qa).observe().raw_amount
     assert left == right
 
 
 @given(a=money_decimals)
 def test_add_zero_is_identity(a: Decimal) -> None:
     qa = QMoney(a)
-    result = (qa + QMoney(Decimal("0"))).observe().to_decimal()
+    result = (qa + QMoney(Decimal("0"))).observe().raw_amount
     assert result == a
 
 
 @given(a=money_decimals)
 def test_sub_self_is_zero(a: Decimal) -> None:
     qa = QMoney(a)
-    result = (qa - qa).observe().to_decimal()
+    result = (qa - qa).observe().raw_amount
     assert result == Decimal("0")
 
 
 @given(a=money_decimals)
 def test_mul_one_is_identity(a: Decimal) -> None:
     qa = QMoney(a)
-    result = (qa * 1).observe().to_decimal()
+    result = (qa * 1).observe().raw_amount
     assert result == a
 
 
 @given(a=money_decimals)
 def test_negation_inverts(a: Decimal) -> None:
     qa = QMoney(a)
-    result = (qa + (-qa)).observe().to_decimal()
+    result = (qa + (-qa)).observe().raw_amount
     assert result == Decimal("0")
 
 
@@ -72,25 +72,25 @@ def test_negation_inverts(a: Decimal) -> None:
 
 @given(a=money_decimals, b=money_decimals)
 def test_add_matches_decimal(a: Decimal, b: Decimal) -> None:
-    result = (QMoney(a) + QMoney(b)).observe().to_decimal()
+    result = (QMoney(a) + QMoney(b)).observe().raw_amount
     assert result == a + b
 
 
 @given(a=money_decimals, b=money_decimals)
 def test_sub_matches_decimal(a: Decimal, b: Decimal) -> None:
-    result = (QMoney(a) - QMoney(b)).observe().to_decimal()
+    result = (QMoney(a) - QMoney(b)).observe().raw_amount
     assert result == a - b
 
 
 @given(a=money_decimals, n=scalar_ints)
 def test_mul_int_matches_decimal(a: Decimal, n: int) -> None:
-    result = (QMoney(a) * n).observe().to_decimal()
+    result = (QMoney(a) * n).observe().raw_amount
     assert result == a * n
 
 
 @given(a=money_decimals, b=positive_decimals)
 def test_div_matches_decimal(a: Decimal, b: Decimal) -> None:
-    result = (QMoney(a) / b).observe().to_decimal()
+    result = (QMoney(a) / b).observe().raw_amount
     assert result == a / b
 
 
@@ -98,10 +98,8 @@ def test_div_matches_decimal(a: Decimal, b: Decimal) -> None:
 
 
 @given(a=money_decimals, b=money_decimals, n=scalar_ints)
-def test_chained_mul_add_matches_decimal(
-    a: Decimal, b: Decimal, n: int
-) -> None:
-    result = (QMoney(a) * n + QMoney(b)).observe().to_decimal()
+def test_chained_mul_add_matches_decimal(a: Decimal, b: Decimal, n: int) -> None:
+    result = (QMoney(a) * n + QMoney(b)).observe().raw_amount
     assert result == a * n + b
 
 
@@ -112,5 +110,5 @@ def test_chained_mul_add_matches_decimal(
 )
 def test_sum_matches_decimal(a: Decimal, b: Decimal, c: Decimal) -> None:
     values = [QMoney(a), QMoney(b), QMoney(c)]
-    result = sum(values).observe().to_decimal()
+    result = sum(values).observe().raw_amount
     assert result == a + b + c

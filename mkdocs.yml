@@ -1,5 +1,5 @@
 site_name: quantum-money
-site_description: Lazy evaluation library for monetary calculations in Python
+site_description: Eager and lazy evaluation library for monetary calculations in Python
 repo_url: https://github.com/your-username/quantum-money
 
 theme:

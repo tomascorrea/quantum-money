@@ -1,6 +1,5 @@
 """Tests for expression tree node types."""
 
-import dataclasses
 from decimal import Decimal
 
 import pytest
@@ -13,9 +12,9 @@ def test_value_node_stores_amount():
     assert node.amount == Decimal("10.33")
 
 
-def test_value_node_is_frozen():
+def test_value_node_is_immutable():
     node = Value(Decimal("10"))
-    with pytest.raises(dataclasses.FrozenInstanceError):
+    with pytest.raises(AttributeError):
         node.amount = Decimal("20")  # type: ignore[misc]
 
 

@@ -7,44 +7,44 @@ from quantum_money import QMoney
 
 def test_round_after_multiply():
     price = QMoney(Decimal("10.33"))
-    result = (price * 3).round(ROUND_HALF_UP).observe().to_decimal()
+    result = (price * 3).round(ROUND_HALF_UP).observe().raw_amount
     assert result == Decimal("30.99")
 
 
 def test_round_before_add():
     a = QMoney(Decimal("10.335"))
     b = QMoney(Decimal("10.335"))
-    result = (a.round(ROUND_HALF_UP) + b.round(ROUND_HALF_UP)).observe().to_decimal()
+    result = (a.round(ROUND_HALF_UP) + b.round(ROUND_HALF_UP)).observe().raw_amount
     assert result == Decimal("20.68")
 
 
 def test_round_half_up():
     value = QMoney(Decimal("2.555"))
-    result = value.round(ROUND_HALF_UP).observe().to_decimal()
+    result = value.round(ROUND_HALF_UP).observe().raw_amount
     assert result == Decimal("2.56")
 
 
 def test_round_half_down():
     value = QMoney(Decimal("2.555"))
-    result = value.round(ROUND_HALF_DOWN).observe().to_decimal()
+    result = value.round(ROUND_HALF_DOWN).observe().raw_amount
     assert result == Decimal("2.55")
 
 
 def test_round_half_even():
     value = QMoney(Decimal("2.545"))
-    result = value.round(ROUND_HALF_EVEN).observe().to_decimal()
+    result = value.round(ROUND_HALF_EVEN).observe().raw_amount
     assert result == Decimal("2.54")
 
 
 def test_round_zero_places():
     value = QMoney(Decimal("10.6"))
-    result = value.round(ROUND_HALF_UP, places=0).observe().to_decimal()
+    result = value.round(ROUND_HALF_UP, places=0).observe().raw_amount
     assert result == Decimal("11")
 
 
 def test_round_three_places():
     value = QMoney(Decimal("1.23456"))
-    result = value.round(ROUND_HALF_UP, places=3).observe().to_decimal()
+    result = value.round(ROUND_HALF_UP, places=3).observe().raw_amount
     assert result == Decimal("1.235")
 
 
@@ -60,8 +60,8 @@ def test_rounding_order_matters():
     """
     unit_price = QMoney(Decimal("1.345"))
 
-    round_first = (unit_price.round(ROUND_HALF_UP) * 10).observe().to_decimal()
-    round_last = (unit_price * 10).round(ROUND_HALF_UP).observe().to_decimal()
+    round_first = (unit_price.round(ROUND_HALF_UP) * 10).observe().raw_amount
+    round_last = (unit_price * 10).round(ROUND_HALF_UP).observe().raw_amount
 
     assert round_first == Decimal("13.50")
     assert round_last == Decimal("13.45")
@@ -83,4 +83,4 @@ def test_readme_example():
     final = rounded_total + QMoney(Decimal("0.01"))
 
     result = final.observe()
-    assert result.to_decimal() == Decimal("31.00")
+    assert result.raw_amount == Decimal("31.00")

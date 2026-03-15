@@ -8,7 +8,7 @@ import pytest
 from quantum_money import QMoney
 
 ITERATIONS = 5_000
-MAX_SLOWDOWN = 10  # QMoney may be at most Nx slower than raw Decimal
+MAX_SLOWDOWN = 8  # QMoney may be at most Nx slower than raw Decimal
 
 
 def _bench(fn, iterations: int = ITERATIONS) -> float:
@@ -31,7 +31,7 @@ def _decimal_add() -> Decimal:
 def _qmoney_add() -> Decimal:
     a = QMoney(Decimal("10.33"))
     b = QMoney(Decimal("1.50"))
-    return (a + b).observe().to_decimal()
+    return (a + b).observe().raw_amount
 
 
 def _decimal_chain() -> Decimal:
@@ -45,7 +45,7 @@ def _qmoney_chain() -> Decimal:
     a = QMoney(Decimal("100"))
     b = QMoney(Decimal("5.50"))
     c = QMoney(Decimal("0.25"))
-    return (a * 3 - b + c).observe().to_decimal()
+    return (a * 3 - b + c).observe().raw_amount
 
 
 def _decimal_sum() -> Decimal:
@@ -61,7 +61,7 @@ def _qmoney_sum() -> Decimal:
         QMoney(Decimal("4")),
         QMoney(Decimal("5")),
     ]
-    return sum(values).observe().to_decimal()
+    return sum(values).observe().raw_amount
 
 
 def _decimal_mul_chain() -> Decimal:
@@ -75,7 +75,7 @@ def _qmoney_mul_chain() -> Decimal:
     v = QMoney(Decimal("100"))
     for i in range(1, 6):
         v = v * i
-    return v.observe().to_decimal()
+    return v.observe().raw_amount
 
 
 # --- tests ---
@@ -94,9 +94,7 @@ class TestPerformance:
         ],
         ids=["add", "chain", "sum", "mul_chain"],
     )
-    def test_overhead_within_bounds(
-        self, label: str, decimal_fn, qmoney_fn
-    ) -> None:
+    def test_overhead_within_bounds(self, label: str, decimal_fn, qmoney_fn) -> None:
         # warm-up
         for _ in range(100):
             decimal_fn()
