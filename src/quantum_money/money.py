@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numbers
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Union
 
@@ -46,9 +47,11 @@ class Money:
     def __radd__(self, other: object) -> Money:
         if other == 0:
             return self
-        if not isinstance(other, Money):
-            return NotImplemented
-        return Money(other._amount + self._amount)
+        if isinstance(other, Money):
+            return Money(other._amount + self._amount)
+        if isinstance(other, (Decimal, int, float)):
+            return Money(Decimal(str(other)) + self._amount)
+        return NotImplemented
 
     def __sub__(self, other: object) -> Money:
         if not isinstance(other, Money):
@@ -56,9 +59,11 @@ class Money:
         return Money(self._amount - other._amount)
 
     def __rsub__(self, other: object) -> Money:
-        if not isinstance(other, Money):
-            return NotImplemented
-        return Money(other._amount - self._amount)
+        if isinstance(other, Money):
+            return Money(other._amount - self._amount)
+        if isinstance(other, (Decimal, int, float)):
+            return Money(Decimal(str(other)) - self._amount)
+        return NotImplemented
 
     # --- Arithmetic: Money */÷ scalar ---
 
@@ -105,6 +110,8 @@ class Money:
     def _compare_value(self, other: object) -> Decimal | type(NotImplemented):
         if isinstance(other, Money):
             return other.real_amount
+        if isinstance(other, (Decimal, int, float)):
+            return Decimal(str(other))
         return NotImplemented
 
     def __eq__(self, other: object) -> bool:
@@ -180,3 +187,10 @@ class Money:
 
     def __repr__(self) -> str:
         return f"Money({self._amount})"
+
+    def debug_precision(self) -> str:
+        """Show both internal and real amounts for debugging."""
+        return f"Internal: {self._amount}, Real: {self.real_amount}"
+
+
+numbers.Real.register(Money)
